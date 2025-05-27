@@ -1,0 +1,1061 @@
+
+/*==================================================================================
+
+Curso PostgreSQL Completo
+Instrutor: Sandro Servino
+https://www.linkedin.com/in/sandroservino/?originalSubdomain=pt
+
+-------   DATABASE ROLES --------
+
+O PostgreSQL gerencia permissões de acesso ao banco de dados utilizando o conceito de 
+roles. 
+
+Uma role pode ser entendida tanto como um usuário individual quanto como um grupo de 
+usuários, dependendo de sua configuração. As roles podem possuir objetos no banco de 
+dados, como tabelas e funções, e atribuir privilégios sobre esses objetos a outras roles,
+controlando assim quem tem acesso a quais recursos. Além disso, é possível conceder a 
+uma role a associação a outra, permitindo que a role membro utilize os privilégios 
+atribuídos à role à qual está associada.
+
+O conceito de roles engloba os antigos conceitos de "usuários" e "grupos". Em versões 
+do PostgreSQL anteriores à 8.1, usuários e grupos eram entidades distintas, mas agora 
+existem apenas roles. 
+
+Qualquer role pode atuar como um usuário, um grupo ou ambos.
+
+https://www.postgresql.org/docs/current/user-manag.html
+
+==================================================================================*/
+
+LAB 1
+
+No PostgreSQL, as roles de banco de dados são entidades globais que gerenciam permissões 
+de acesso e não estão vinculadas a usuários do sistema operacional. 
+Elas são definidas em todo a instancia Postgres, e não por banco de dados individual. 
+
+Para criar uma nova role, utiliza-se o comando SQL CREATE ROLE:
+
+CREATE ROLE nome;
+
+O nome da role deve seguir as regras para identificadores SQL: 
+sem caracteres especiais ou entre aspas duplas. 
+
+OBS: Repare que no PGAGMIN, vc consegue ver os logins e roles criados no menu 
+hieraquico a esquerda : Login/Group Roles
+
+Para determinar o conjunto de roles existentes, examine o catálogo do sistema pg_roles, 
+por exemplo:
+
+SELECT rolname FROM pg_roles;
+SELECT rolname,* FROM pg_roles;
+
+Ou para ver apenas aquelas capazes de fazer login:
+
+SELECT rolname FROM pg_roles WHERE rolcanlogin;
+
+OBS: REPARE QUE POSTGRESQL É A ROLE PADRAO, CAPAZ DE FAZER LOGIN
+
+Para criar uma role no PostgreSQL que possa fazer login, você deve incluir 
+a opção LOGIN no comando CREATE ROLE. 
+Veja o exemplo abaixo para criar a role name2 com essa capacidade:
+
+CREATE ROLE name2 LOGIN PASSWORD 'sua_senha';
+
+E RODE NOVAMENTE:
+
+SELECT rolname FROM pg_roles WHERE rolcanlogin;
+
+Para remover uma role existente, utiliza-se o comando DROP ROLE:
+
+DROP ROLE name2;
+
+-- Exemplo completo com permissões adicionais:
+
+Caso queira adicionar outras permissões ou atributos à role, como criar bancos de dados 
+ou objetos, você pode fazer assim:
+
+CREATE ROLE name3 LOGIN PASSWORD 'a123b456' CREATEDB CREATEROLE;
+
+-- LOGIN: Permite a role logar no servidor Postgres com a senha a123b456
+-- CREATEDB: Permite à role criar bancos de dados.
+-- CREATEROLE: Permite à role criar outras roles.
+
+-- VAMOS FAZER UM TESTE DE CONEXAO PELO PSQL, programa client da POSTGRESQL, mas 
+-- poderia tambem criar uma conexao nova pelo pgadmin
+
+CD C:\Program Files\PostgreSQL\17\bin\
+
+psql -U name3 -h localhost -d postgres
+
+Digite a senha: a123b456
+
+postgres=>
+
+-- Digite por exemplo:
+
+SELECT rolname FROM pg_roles WHERE rolcanlogin;
+create database teste2;
+
+-- De um refresh no PGADMIN e veja que o banco teste2 foi criado.
+
+-- SE QUISER MUDAR A PASS DE QUALQUER ROLE, MESMO POSTGRESQL:
+
+ALTER USER name3 PASSWORD 'a123';
+
+-- Altere e faca uma nova conexao com:
+
+\q
+
+psql -U name3 -h localhost -d postgres
+
+Senha:a123
+--
+
+LAB2
+
+No PostgreSQL, algumas roles (papéis) são criadas automaticamente durante a instalação 
+do banco de dados. 
+Essas roles pré-definidas têm funções específicas que ajudam a administrar o banco de 
+dados. Aqui estão as principais roles padrão do PostgreSQL e suas finalidades:
+
+1. pg_read_all_data
+
+Descrição: Essa role tem permissão para ler dados de todas as tabelas 
+e visualizações em todos os esquemas do banco de dados.
+
+Usos:
+Atribuir a usuários que precisam de acesso de leitura global no banco de dados.
+Ideal para analistas ou usuários que apenas consultam dados sem realizar modificações.
+
+GRANT pg_read_all_data TO name3;
+
+2. pg_write_all_data
+
+Descrição: Essa role tem permissão para inserir, atualizar e excluir dados em todas as 
+tabelas de todos os esquemas, ou seja:
+
+INSERT
+UPDATE
+DELETE
+TRUNCATE
+
+Usos:
+Atribuir a usuários que precisam de acesso global de escrita nos banco de dados.
+
+GRANT pg_write_all_data TO name3;
+
+3. pg_monitor
+
+Descrição: Oferece privilégios de leitura em funções, tabelas e visualizações 
+relacionadas à monitorização do banco de dados, como:
+pg_stat_activity (estatísticas de atividades ativas).
+pg_stat_replication (estatísticas de replicação).
+
+Usos:
+Ideal para administradores que precisam monitorar o desempenho e status 
+dos bancos de dados sem permissão de escrita.
+
+GRANT pg_monitor TO name3;
+
+4. pg_read_all_stats
+
+Descrição: Permite ler estatísticas relacionadas ao desempenho do banco de dados, como:
+pg_stat_user_tables (estatísticas de tabelas).
+pg_stat_bgwriter (estatísticas do background writer).
+
+Usos:
+Atribuir a usuários que precisam monitorar apenas estatísticas de desempenho.
+
+GRANT pg_read_all_stats TO name3;
+
+5. pg_signal_backend
+
+Descrição: Permite enviar sinais para backends (processos do PostgreSQL). 
+Com essa role, o usuário pode:
+Finalizar consultas longas ou processos problemáticos (pg_terminate_backend()).
+Cancelar consultas em execução (pg_cancel_backend()).
+
+Usos:
+Ideal para administradores que precisam gerenciar e controlar sessões ativas.
+
+GRANT pg_signal_backend TO name3;
+
+
+6. pg_execute_server_program
+
+Descrição: Permite executar programas do servidor, como comandos do sistema operacional.
+
+Usos:
+Utilizada para funções que interagem diretamente com o sistema operacional.
+
+GRANT pg_execute_server_program TO name3;
+
+
+7. pg_read_server_files
+
+Descrição: Permite ler arquivos no sistema de arquivos do servidor.
+
+Usos:
+Necessária para comandos como COPY FROM (carregar dados de arquivos externos).
+
+GRANT pg_read_server_files TO name3;
+
+
+8. pg_write_server_files
+
+Descrição: Permite escrever arquivos no sistema de arquivos do servidor.
+
+Usos:
+Necessária para comandos como COPY TO (exportar dados para arquivos externos).
+
+GRANT pg_write_server_files TO name3;
+
+
+9. pg_database_owner
+
+Descrição: Essa role não é atribuída diretamente, mas representa o "dono" 
+de um banco de dados.
+
+Usos:
+O proprietário de um banco de dados pode fazer alterações no banco, 
+como criar objetos e gerenciar permissões.
+
+
+10. pg_backup
+
+Descrição: Essa role não existe como padrão, mas é comum que administradores 
+criem uma role com este nome para gerenciar backups.
+
+Usos:
+Combinada com permissões como pg_read_all_data para realizar backups de forma eficiente.
+
+11. Superuser
+
+Descrição: A role superusuária (postgres) é criada por padrão durante a instalação. 
+Ela possui controle total sobre o servidor.
+
+Usos:
+Administrar e configurar o servidor PostgreSQL.
+Realizar qualquer tipo de operação, incluindo criação de bancos de dados, 
+roles e gerenciamento avançado.
+
+PARA VER AS ROLES QUE FORAM ADICIONADAS AO NAME3:
+
+SELECT rolname 
+FROM pg_roles 
+WHERE oid IN (
+    SELECT roleid 
+    FROM pg_auth_members 
+    WHERE member = (SELECT oid FROM pg_roles WHERE rolname = 'name3')
+);
+
+E PARA REVOGAR UMA ROLE, POR EXEMPLO "pg_monitor":
+
+REVOKE pg_monitor FROM name3;
+
+SELECT rolname 
+FROM pg_roles 
+WHERE oid IN (
+    SELECT roleid 
+    FROM pg_auth_members 
+    WHERE member = (SELECT oid FROM pg_roles WHERE rolname = 'name3')
+);
+
+OBS: TODOS ESTES COMANDOS PODERIAM SER EXECUTADOS NO PLSQL, TANTO NO DOS, 
+QUANTO NO LINUX.
+
+RESUMINDO:
+Essas roles padrão foram criadas para oferecer uma maneira segura e estruturada de 
+gerenciar usuários, acesso e operações no PostgreSQL. Você pode combinar essas roles 
+com outras personalizadas, dependendo das necessidades do seu ambiente.
+
+--
+
+LAB3 
+
+Atributos de Role:
+Um role de banco de dados pode ter vários atributos que definem seus privilégios e 
+interagem com o sistema 
+de autenticação do cliente.
+
+Privilégio de login:
+Apenas roles com o atributo LOGIN podem ser usadas como o nome de role inicial para uma 
+conexão de banco de dados. 
+Um role com o atributo LOGIN pode ser considerado equivalente a um "usuário de banco de 
+dados". 
+
+Para criar um role com privilégio de login, use:
+
+CREATE ROLE nome4 LOGIN;
+CREATE USER nome4;
+(CREATE USER é equivalente a CREATE ROLE, exceto que CREATE USER inclui LOGIN 
+por padrão, enquanto CREATE ROLE não.)
+
+OBS: SE TENTAR CRIAR UM USER COM O MESMO NOME DE UMA ROLE EXISTENTE, O POSTGRESQL VAI 
+DIZER QUE JA EXISTE
+
+CREATE USER nome5;
+CREATE USER nome_do_usuario1 WITH PASSWORD 'senha';
+
+E VEJA A FRASE COM INIDICACAO DO NOME5 CRIADO. "CREATE ROLE"
+
+--
+
+Status de superusuário:
+
+Um superusuário de banco de dados ignora todas as verificações de permissão, exceto o 
+direito de login. 
+Este é um privilégio perigoso e não deve ser usado de forma descuidada; é melhor fazer 
+a maior parte do seu trabalho como um role que não seja superusuário. 
+
+Para criar um novo superusuário, use CLAUSULA SUPERUSER:
+
+CREATE ROLE superuser0 SUPERUSER;
+CREATE ROLE superuser SUPERUSER LOGIN PASSWORD 'sua_senha';
+
+Criação de banco de dados:
+
+Um role precisa ser explicitamente autorizado a criar bancos de dados 
+(exceto para superusuários, que ignoram todas as verificações de permissão). 
+
+Para criar um role com esse privilégio, use:
+
+CREATE ROLE nomeDB CREATEDB;
+
+--
+
+Criação de roles:
+
+O que é o privilégio CREATEROLE?
+É um poder especial que permite a um usuário criar, alterar e deletar 
+outras roles (usuários ou grupos) no PostgreSQL.
+
+Mas atenção: não dá todos os poderes sobre todas as roles automaticamente.
+
+CREATE ROLE joao CREATEROLE LOGIN PASSWORD 'senha123';
+
+-- Isso cria um role chamado joao e se logar.
+
+-- Esse role tem permissão para criar outras roles no banco.
+
+-- Ele não é superusuário.
+
+-- Ele só pode alterar ou deletar roles que ele criou ou que foram concedidas a ele 
+   com a opção ADMIN.
+
+O que é a tal “opção ADMIN”?
+Pensa assim: se você dá uma role para alguém com ADMIN OPTION, essa pessoa pode:
+
+Alterar a role
+
+Excluir a role
+
+Passar essa role para outras pessoas
+
+Exemplo:
+
+GRANT nomeDB TO joao WITH ADMIN OPTION;
+
+Agora, o joao pode:
+
+Usar a role nomeDB 
+
+Dar a role nomeDB para outras pessoas
+
+Remover a role de alguém
+
+E até dropar a role...
+
+No entanto, CREATEROLE não concede a capacidade de criar roles SUPERUSER, 
+nem concede poder sobre roles SUPERUSER já existentes. 
+Além disso, CREATEROLE não concede o poder de 
+criar usuários de REPLICATION nem a habilidade de conceder ou revogar o privilégio 
+de REPLICATION.
+
+Iniciando replicação:
+
+Um role deve ser explicitamente autorizado a iniciar replicação 
+(exceto para superusuários). 
+
+Para criar tal role, use:
+
+ CREATE ROLE nomerep2 REPLICATION LOGIN;
+
+---
+
+Senha:
+
+A senha só é significativa se o método de autenticação do cliente exigir uma senha para 
+se conectar ao banco de dados. A senha e os métodos de autenticação md5 utilizam senhas. 
+As senhas do banco de dados são separadas das senhas do sistema operacional. 
+Para especificar uma senha na criação do role, use CREATE ROLE nome PASSWORD 'string'.
+
+Herdeiro de privilégios:
+
+Por padrão, um role herda os privilégios dos roles dos quais é membro. 
+Para criar um role que não herda privilégios por padrão, 
+use CREATE ROLE nome NOINHERIT.
+
+Limite de conexões:
+
+O limite de conexões especifica quantas conexões simultâneas um role pode fazer. 
+-1 (o valor padrão) significa sem limite. 
+Para especificar o limite de conexões ao criar o role, use:
+
+CREATE ROLE pedro LOGIN PASSWORD 'senha456' CONNECTION LIMIT 3;
+
+-- Agora o usuário pedro só pode estar conectado em até 3 sessões diferentes 
+-- ao mesmo tempo.
+
+Dica: controle de recursos
+Esse tipo de limite é útil para:
+
+Evitar que um usuário ou app sobrecarregue o servidor.
+
+Controlar consumo de conexões por scripts, automações ou usuários menos confiáveis.
+
+--
+
+Os atributos de um role podem ser modificados após a criação com ALTER ROLE. 
+
+
+--
+
+LAB4
+
+Associação de Papéis (ROLES)
+
+Frequentemente é conveniente agrupar usuários para facilitar o gerenciamento de 
+privilégios.
+Dessa forma, os privilégios podem ser concedidos ou revogados de um grupo como um todo. 
+No PostgreSQL, isso é feito criando um papel que representa o grupo e, em seguida, 
+concedendo associação no papel do grupo para papéis individuais de usuários.
+
+Para configurar um papel de grupo, primeiro crie o papel:
+
+CREATE ROLE name;
+
+Normalmente, um papel sendo usado como grupo não teria o atributo LOGIN, 
+embora você possa configurá-lo se desejar.
+
+Uma vez que o papel do grupo existe, você pode adicionar e remover membros usando os 
+comandos GRANT e REVOKE:
+
+GRANT group_role TO role1, ... ;
+REVOKE group_role FROM role1, ... ;
+
+Você também pode conceder associação a outros papéis de grupo 
+(já que não há realmente distinção entre papéis de grupo 
+e papéis que não são de grupo). O banco de dados não permitirá que você configure 
+loops circulares de associação. 
+Além disso, não é permitido conceder associação em um papel para PUBLIC.
+
+Os membros de um papel de grupo podem usar os privilégios do papel de duas maneiras:
+- Primeiro, papéis membros que receberam associação com a opção SET podem usar 
+  SET ROLE para temporariamente "se tornar"
+  o papel do grupo. Neste estado, a sessão do banco de dados tem acesso aos privilégios 
+  do papel do grupo 
+  em vez do papel de login original, e quaisquer objetos do banco de dados criados 
+  são considerados como pertencentes 
+  ao papel do grupo e não ao papel de login. 
+- Segundo, papéis membros que receberam associação com a opção INHERIT automaticamente 
+  têm uso dos privilégios daqueles 
+  dos quais são direta ou indiretamente membros, embora a cadeia pare nas associações 
+  que não possuem a opção inherit. 
+
+Como exemplo, suponha que fizemos:
+
+CREATE ROLE joe;
+CREATE ROLE admin;
+CREATE ROLE wheel;
+CREATE ROLE island;
+GRANT admin TO joe WITH INHERIT TRUE;
+GRANT island TO joe WITH INHERIT TRUE;
+GRANT wheel TO admin WITH INHERIT FALSE;
+
+Imediatamente após conectar como papel joe, uma sessão do banco de dados terá uso dos 
+privilégios concedidos diretamente ao joe mais quaisquer privilégios concedidos ao admin e island, 
+porque joe "herda" esses privilégios. 
+
+No entanto, privilégios concedidos ao wheel não estão disponíveis para joe, porque mesmo que 
+joe seja indiretamente 
+um membro de wheel, a associação é via admin, que foi concedida usando WITH INHERIT FALSE. 
+
+-- VAMOS ALGUNS EXEMPLOS DE SET ROLE
+
+Depois de:
+
+SET ROLE admin;
+
+a sessão teria uso apenas dos privilégios concedidos ao admin, 
+e não aqueles concedidos ao joe ou island ou mesmo wheel devido neste caso 
+ao INHERIT FALSE. 
+
+Depois de:
+
+SET ROLE wheel;
+
+a sessão teria uso apenas dos privilégios concedidos ao wheel, e não aqueles concedidos 
+ao joe ou admin (a nao ser que eu mudasse  WITH INHERIT TRUE). 
+Ou seja, o comando SET ROLE wheel faz com que a sessão atual assuma as permissões e 
+privilégios ESPECIFICOS do role chamado wheel. 
+A partir desse momento, qualquer operação que você execute será com as permissões 
+atribuídas ao role wheel, 
+até que você use SET ROLE novamente para mudar para outro role ou voltar para o seu 
+role original.
+
+Rode estes comandos:
+
+SELECT current_user, session_user;
+SELECT * FROM pg_roles WHERE rolname = current_user;
+
+OBS:
+
+current_user: Retorna o nome do usuário que está executando a consulta, levando em 
+consideração as 
+permissões e a autenticação atual. Este pode ser o role que foi atribuído para a sessão 
+via SET ROLE.
+
+session_user: Retorna o nome do usuário original da sessão, ou seja, o usuário com o 
+qual a sessão foi iniciada. 
+Mesmo se um SET ROLE for utilizado, o session_user permanecerá o mesmo.
+
+Em resumo: current_user pode mudar com SET ROLE, enquanto session_user 
+sempre será o mesmo durante a sessão E ISTO EH IMPORTANTE PARA QUESTOES DE AUDITORIA, 
+PARA SABER O PAPEL
+ORIGINAL QUE EXECUTOU O COMANDO.
+
+O estado original de privilégios pode ser restaurado com qualquer um destes:
+
+SET ROLE joe;
+SELECT current_user, session_user;
+
+SET ROLE NONE; -- RETORNA AO ROLE ORIGINAL
+SELECT current_user, session_user;
+
+RESET ROLE; -- RETORNA AO ROLE ORIGINAL
+SELECT current_user, session_user;
+
+Nota
+No padrão SQL, há uma distinção clara entre usuários e papéis, e usuários não herdam 
+automaticamente privilégios 
+enquanto papéis herdam. Este comportamento pode ser obtido no PostgreSQL dando aos 
+papéis o atributo INHERIT, ou nao atraves do NOINHERIT. 
+
+O PostgreSQL por padrão dá a todos os papéis o atributo INHERIT, para compatibilidade 
+com versões anteriores 
+à 8.1 nas quais os usuários sempre tinham uso de permissões concedidas aos grupos 
+dos quais eram membros.
+
+Os atributos de papel LOGIN, SUPERUSER, CREATEDB e CREATEROLE podem ser considerados 
+privilégios especiais, 
+mas nunca são herdados como privilégios comuns em objetos do banco de dados. 
+Você deve realmente usar SET ROLE para um papel específico que tenha um desses atributos para fazer uso do atributo 
+ou dar grants de forma explicita para o user ter estes privilegios.
+
+--
+
+Para revogar as permissões dadas, use os seguintes comandos:
+
+-- PARA REVOGAR OS PAPEIS DO JOE E WHEEL ABAIXO PRECiSA RETORNAR PARA SESSAO DO 
+-- USERUSER POSTGRE SENAO RECEBERA ESTE ERRO:
+-- ERROR:  Only roles with the ADMIN option on role "admin" may revoke this role.permission denied to revoke role "admin"
+-- NESTE CASO TERIA QUE TER DADO O GRANT DE "ADMIN" PARA O PAPEL DA SESSAO ATUAL PODER REVOGAR, ASSIM:
+-- GRANT admin TO joe WITH INHERIT TRUE, ADMIN;
+
+-- MAS SE VOLTAR PARA SUPERUSER CONSEGUE REVOGAR:
+
+SET ROLE NONE; 
+SELECT current_user, session_user;
+
+REVOKE admin FROM joe;
+REVOKE island FROM joe;
+REVOKE wheel FROM admin;
+
+--
+
+Para destruir um papel de grupo, use DROP ROLE:
+
+DROP ROLE name;
+
+Quaisquer associações no papel do grupo são automaticamente revogadas 
+
+--
+
+LAB 5
+
+-- VAMOS SIMULAR UMA QUESTAO ONDE SE UM PAPEL TIVER OBJETOS, NAO CONSEGUIRIA DAR 
+-- SIMPLESMENTE UM DROP ROLE
+
+https://www.postgresql.org/docs/current/role-removal.html
+
+SET ROLE NONE; 
+SELECT current_user, session_user;
+
+-- 1. Criar um novo usuário/role que será nosso "usuário problema"
+CREATE ROLE usuario_problema WITH LOGIN PASSWORD 'senha123';
+
+-- 2. Criar um banco de dados de teste
+CREATE DATABASE db_teste;
+
+-- 3. Vamos dar todos os privilegio para o user poder conectar no banco de dados db_teste 
+-- e criar QQ objeto:
+
+GRANT ALL PRIVILEGES ON DATABASE "db_teste" to usuario_problema;
+
+-- SE CONECTE NO BANCO DE DADOS DB_TESTE
+-- Conectar ao banco de dados (você precisará fazer isso manualmente estando 
+-- conectando no PLSQL e 
+-- rodando o comando: \c db_teste; 
+-- ou conectar pelo PGADMIN.
+-- CLIQUE NO BANCO DB_TESTE E ABRA UMA NOVA ABA PARA EXECUTAR OS PROXIMOS COMANDOS 
+-- NA ABA COM 
+-- O BANCO db_teste
+
+-- 4. Criar alguns objetos pertencentes ao usuario_problema
+-- ir para uma nova aba conectado ao banco db_teste e rodar comandos abaixo
+-- VAMOS PARA A ABA QUE ESTA CONECTADO NO BANCO DB_TESTE
+
+SET ROLE usuario_problema; -- mude o contexto da sua sessao para este user
+SELECT current_user, session_user;
+
+-- Criar uma tabela no esquema meu_schema
+CREATE SCHEMA meu_schema;
+
+CREATE TABLE meu_schema.minha_tabela (
+    id serial PRIMARY KEY,
+    descricao text
+);
+
+OBS:Um schema no PostgreSQL é uma forma de criar um namespace que contém objetos 
+do banco de dados como tabelas, views, funções, etc. É como se fosse uma "pasta" 
+ou "diretório" dentro do banco de dados que ajuda a organizar os objetos de forma 
+lógica e facilita comandos de manutencao que podem ser dados sobre o schema afetando 
+assim todos os objetos deste schema.
+*** Funciona da mesma forma no SQL SERVER E MYSQL mas no Oracle SCHEMA TEM OUTRO 
+    SIGNIFICADO.
+
+-- Criar um novo schema
+CREATE SCHEMA recursos_humanos;
+
+-- Criar uma tabela neste schema
+CREATE TABLE recursos_humanos.funcionarios (
+    id serial PRIMARY KEY,
+    nome text,
+    cargo text
+);
+
+-- Criar outro schema
+CREATE SCHEMA financeiro;
+
+-- Criar uma tabela com o mesmo nome em outro schema
+CREATE TABLE financeiro.funcionarios (
+    id serial PRIMARY KEY,
+    nome text,
+    salario decimal
+);
+
+-- ATENCAO, AGORA TENTE CRIAR UM OBJETO SEM INDICAR O SCHEMA
+-- O POSTGRESQL AGORA IRA TENTAR CRIAR NO SCHEMA padrao public
+
+CREATE TABLE minha_tabela (
+    id serial PRIMARY KEY,
+    descricao text
+);
+
+ERROR:  permission denied for schema public
+LINE 1: CREATE TABLE minha_tabela (
+
+-- SEU USER NAO TEM ESTA PERMISSAO, ENTAO RETORNE PARA USER POSTGRES E DE 
+-- ESTA PERMISSAO PARA ESTE USER CRIAR OBJETOS NO PUBLIC. RODE O COMANDO:
+
+SET ROLE NONE; -- mude o contexto da sua sessao para user postgres
+SELECT current_user, session_user;
+
+GRANT ALL ON SCHEMA public TO usuario_problema;
+
+SET ROLE usuario_problema; -- mude o contexto da sua sessao para este user
+SELECT current_user, session_user;
+
+CREATE TABLE minha_tabela (
+    id serial PRIMARY KEY,
+    descricao text
+);
+
+-- Criar uma view
+CREATE VIEW minha_view AS 
+SELECT * FROM minha_tabela;
+
+-- Criar uma função
+CREATE FUNCTION minha_funcao()
+RETURNS text AS $$
+BEGIN
+    RETURN 'Olá mundo';
+END;
+$$ LANGUAGE plpgsql;
+
+-- OBS: NAO CONSIDERO UMA BOA PRATICA FICAR CRIANDO OBJETOS EM SCHEMA PUBLIC 
+-- NO BANCO DE DADOS POSTGRES
+
+-- AGORA AINDA DENTRO DA SESSAO DO USER usuario_problema, TENTE CRIAR UM NOVO BANCO 
+-- DE DADOS
+
+SELECT current_user, session_user;
+CREATE DATABASE novobancox;
+
+ERROR:  permission denied to create database 
+
+-- Execute o seguinte comando para ver os privilégios do usuário:
+SELECT rolname, rolsuper, rolcreatedb FROM pg_roles WHERE rolname = 'usuario_problema';
+
+-- VA PARA A SESSAO DO SUPER USER E DE ESTE PRIVILEGIO PARA O USER 
+-- USUARIO_PROBLEMA
+
+SELECT current_user, session_user;
+-- OU PODERIA RETORNAR PARA O USER POSTGRES PARA DAR ESTA PERMISSAO
+RESET ROLE;
+
+ALTER ROLE usuario_problema CREATEDB;
+SELECT rolname, rolsuper, rolcreatedb FROM pg_roles WHERE rolname = 'usuario_problema';
+
+-- AGORA RETORNE PARA A SESSAO DO USER usuario_problema, TENTE CRIAR UM NOVO BANCO DE DADOS
+-- NOVAMENTE
+
+SELECT current_user, session_user;
+CREATE DATABASE novobancox;
+
+-- 5. Voltar para a SESSAO DO usuário superusuário
+RESET ROLE;
+SELECT current_user, session_user;
+
+-- VEJA MAIS ALGUNS TIPOS DE PRIVILEGIOS QUE PODERIA DAR:
+
+GRANT CREATE ON DATABASE db_teste TO usuario_problema;
+GRANT CONNECT ON DATABASE db_teste TO usuario_problema;
+GRANT CREATE ON SCHEMA public TO usuario_problema;
+GRANT USAGE ON SCHEMA public TO usuario_problema;
+
+GRANT ALL PRIVILEGES ON SCHEMA public TO usuario_problema;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO usuario_problema;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO usuario_problema;
+GRANT ALL ON SCHEMA public TO usuario_problema;
+
+RESUMO:
+
+GRANT CREATE ON DATABASE db_teste TO usuario_problema;
+Permite que o usuário crie novos esquemas e objetos como tabelas, views, functions, sp
+dentro do banco db_teste, mas não concede 
+permissão para criar tabelas ou outros objetos diretamente dentro de um esquema 
+existente especifico como o public, a nao ser que seja dado esta permissao ou que
+ele tenha criado o schema antes.
+
+GRANT CONNECT ON DATABASE db_teste TO usuario_problema;
+Permite que o usuário se conecte ao banco db_teste, mas não concede permissão 
+para visualizar ou modificar dados.
+
+GRANT CREATE ON SCHEMA public TO usuario_problema;
+Permite que o usuário crie objetos (como tabelas, views, funções, etc.) 
+dentro do esquema public, 
+mas não dá permissão para acessar objetos existentes.
+
+GRANT USAGE ON SCHEMA public TO usuario_problema;
+Permite que o usuário acesse o esquema, mas não concede permissão para criar 
+ou modificar 
+objetos dentro dele.
+
+GRANT ALL PRIVILEGES ON SCHEMA public TO usuario_problema;
+Concede todos os privilégios no esquema, permitindo que o usuário crie, 
+modifique e exclua objetos dentro do esquema public.
+
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO usuario_problema;
+Concede controle total sobre todas as tabelas do esquema public, permitindo selecionar, 
+inserir, atualizar, excluir e alterar as tabelas.
+
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO usuario_problema;
+Concede controle total sobre todas as sequências do esquema public, 
+permitindo que o usuário gerencie a numeração automática de registros.
+
+GRANT ALL ON SCHEMA public TO usuario_problema;
+Equivalente ao GRANT ALL PRIVILEGES ON SCHEMA, concedendo total controle sobre o esquema.
+
+-- 6. Tentar remover o role (isso vai gerar erro com a lista de objetos dependentes)
+-- VAMOS FICAR NA SESSAO DO SUPER USER E TENTAR DELETAR DIRETAMENTE A ROLE CRIADA
+
+DROP ROLE usuario_problema;
+
+ERROR:  privileges for schema public
+privileges for database db_teste
+owner of schema meu_schema
+owner of sequence meu_schema.minha_tabela_id_seq
+owner of table meu_schema.minha_tabela
+owner of sequence minha_tabela_id_seq
+owner of table minha_tabela
+owner of view minha_view
+owner of function minha_funcao()
+owner of schema recursos_humanos
+owner of sequence recursos_humanos.funcionarios_id_seq
+owner of table recursos_humanos.funcionarios
+owner of schema financeiro
+owner of sequence financeiro.funcionarios_id_seq
+owner of table financeiro.funcionarios
+10 objects in database clienterole "usuario_problema" cannot be dropped because some objects depend on it 
+
+ERROR:  role "usuario_problema" cannot be dropped because some objects depend on it
+SQL state: 2BP01
+Detail: privileges for schema public
+privileges for database db_teste
+owner of schema meu_schema
+owner of sequence meu_schema.minha_tabela_id_seq
+owner of table meu_schema.minha_tabela
+owner of sequence minha_tabela_id_seq
+owner of table minha_tabela
+owner of view minha_view
+owner of function minha_funcao()
+owner of schema recursos_humanos
+owner of sequence recursos_humanos.funcionarios_id_seq
+owner of table recursos_humanos.funcionarios
+owner of schema financeiro
+owner of sequence financeiro.funcionarios_id_seq
+owner of table financeiro.funcionarios
+10 objects in database cliente
+
+-- OBS: NAO EH POSSIVEL DELETAR UMA ROLE QUE TENHA OBJETOS PERTENCENTES A ESTA ROLE.
+-- ANTES DE DELETAR A ROLE, PRECISAMOS MOVER OS OBJETOS PARA A PROPRIEDADE DE OUTRA ROLE, 
+-- PODENDO
+-- SER INCLUSIVE A ROLE PADRAO POSTGRES 
+
+-- 7. Comandos para passar a propriedade dos objetos do role usuario_problema para 
+-- outro papel, 
+-- no caso postgres
+
+-- VA PARA A SESSAO COM O BANCO DB_TESTE E RODE:
+
+REASSIGN OWNED BY usuario_problema TO postgres;
+DROP OWNED BY usuario_problema CASCADE; 
+
+EXPLICACAO SOBRE OS DOIS COMANDOS:
+-- REASSIGN OWNED BY usuario_problema TO postgres;
+Este comando transfere a posse de todos os objetos 
+(como tabelas, sequences, views, funções etc.) que pertencem ao usuario_problema 
+para o usuário postgres.
+Transfere a propriedade de todos os objetos do usuário para outro.
+Os objetos continuam existindo e funcionando.
+Útil quando você quer preservar o trabalho do usuário, mas remover o usuário em si.
+
+-- DROP OWNED BY usuario_problema CASCADE;
+Este comando exclui todos os objetos pertencentes a usuario_problema, e com CASCADE, 
+também remove quaisquer objetos que dependam deles.
+Remove todos os objetos que o usuário possui.
+Se usar CASCADE, remove também objetos dependentes (ex: views baseadas nas tabelas).
+Não transfere nada, apenas apaga.
+Se executar este comando antes do REASSIGN, os objetos já terão sido removidos, 
+e não há o que transferir depois, ENTAO CUIDADO COM A ORDEM DESTES 2 COMANDOS.
+
+-- VAMOS TENTAR DELETAR NOVAMENTE
+
+DROP ROLE usuario_problema;
+
+ERRO:
+ERROR:  role "usuario_problema" cannot be dropped because some objects depend on it
+5 objects in database postgres 
+
+-- PARA CONFIRMAR SE EXISTE ALGUM OBJETO QUE AINDA DEPENDE DESTE ROLE
+
+SELECT 
+    n.nspname AS schema_name, 
+    c.relname AS object_name, 
+    c.relkind AS object_type, 
+    pg_catalog.pg_get_userbyid(c.relowner) AS owner 
+FROM pg_class c 
+JOIN pg_namespace n ON n.oid = c.relnamespace 
+WHERE pg_catalog.pg_get_userbyid(c.relowner) = 'usuario_problema';
+
+--  Verifique todas as dependências do usuário
+
+SELECT 
+    objid::regclass AS object_name, 
+    classid::regclass AS object_type 
+FROM pg_depend 
+WHERE refobjid = (SELECT oid FROM pg_roles WHERE rolname = 'usuario_problema');
+
+-- Verifique quais objetos pertencem ao usuario_problema ainda.
+
+SELECT nspname AS schema, relname AS object_name, relkind AS object_type 
+FROM pg_class c 
+JOIN pg_namespace n ON n.oid = c.relnamespace 
+WHERE relowner = (SELECT oid FROM pg_roles WHERE rolname = 'usuario_problema');
+
+-- VAMOR REVOGAR TUDO QUE FOI DADO
+
+REVOKE ALL PRIVILEGES ON DATABASE db_teste FROM usuario_problema;
+REVOKE CREATE ON DATABASE db_teste FROM usuario_problema;
+REVOKE CONNECT ON DATABASE db_teste FROM usuario_problema;
+REVOKE CREATE ON SCHEMA public FROM usuario_problema;
+REVOKE USAGE ON SCHEMA public FROM usuario_problema;
+REVOKE ALL PRIVILEGES ON SCHEMA public FROM usuario_problema;
+REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM usuario_problema;
+REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM usuario_problema;
+REVOKE ALL ON SCHEMA public FROM usuario_problema;
+
+-- PARA DELETAR
+
+DROP ROLE usuario_problema;
+
+ERROR:  role "usuario_problema" cannot be dropped because some objects depend on it
+5 objects in database postgres 
+
+-- VA NA SESSAO DO POSTGRES E RODE O MESMO COMANDO
+
+DROP ROLE usuario_problema;
+
+OBS: POR ALGUM BUG, A MENSAGEM AGORA ESTA MAIS CLARA
+
+ERROR:  role "usuario_problema" cannot be dropped because some objects depend on it
+privileges for schema public
+owner of sequence minha_tabela_id_seq
+owner of table minha_tabela
+owner of view minha_view
+owner of function minha_funcao() 
+
+SQL state: 2BP01
+Detail: privileges for schema public
+owner of sequence minha_tabela_id_seq
+owner of table minha_tabela
+owner of view minha_view
+owner of function minha_funcao()
+
+VAMOS TENTAR REVOGAR ESTAS PERMISSOES ESPECIFICAS EXTRAS
+
+Mesmo depois do REASSIGN OWNED, esses objetos ainda estão sendo listados como 
+pertencentes ao usuario_problema, ou seja, a transferência de posse não foi suficiente.
+
+Vamos resolver isso na mão, explicitamente, trocando a propriedade de cada objeto 
+que o erro mostrou.
+
+RODE NA ABA DA SESSAO DO POSTGRES:
+
+ALTER TABLE minha_tabela OWNER TO postgres;
+ALTER VIEW minha_view OWNER TO postgres;
+ALTER FUNCTION minha_funcao() OWNER TO postgres;
+
+DROP ROLE usuario_problema;
+
+OBS: SE QUISER VERIFICAR SE AINDA EXISTEM OUTROS OBJETOS VINCULADOS A ROLE 
+
+SELECT 'ALTER ' || 
+       CASE c.relkind
+           WHEN 'r' THEN 'TABLE '
+           WHEN 'S' THEN 'SEQUENCE '
+           WHEN 'v' THEN 'VIEW '
+           WHEN 'm' THEN 'MATERIALIZED VIEW '
+           WHEN 'f' THEN 'FOREIGN TABLE '
+           ELSE 'OBJECT '
+       END || 
+       n.nspname || '.' || c.relname || 
+       ' OWNER TO postgres;'
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relowner = (SELECT oid FROM pg_roles WHERE rolname = 'usuario_problema');
+
+SELECT 'ALTER FUNCTION ' || n.nspname || '.' || p.proname || '(' ||
+       pg_get_function_arguments(p.oid) || ') OWNER TO postgres;'
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE p.proowner = (SELECT oid FROM pg_roles WHERE rolname = 'usuario_problema');
+
+-- 
+
+LAB6
+
+Mais sobre Privilégios
+
+Quando um objeto é criado, ele é atribuído a um proprietário. 
+
+O proprietário é normalmente o papel que executou o comando de criação. 
+Para a maioria dos tipos de objetos, 
+o estado inicial é que apenas o proprietário (ou um superusuário) pode fazer qualquer 
+coisa com o objeto. 
+
+Para permitir que outros papéis o utilizem, privilégios devem ser concedidos.
+Existem diferentes tipos de privilégios: SELECT, INSERT, UPDATE, DELETE, TRUNCATE, 
+REFERENCES, TRIGGER, CREATE, 
+CONNECT, TEMPORARY, EXECUTE e USAGE. 
+
+Os privilégios aplicáveis a um objeto específico variam dependendo do tipo do objeto 
+(tabela, função, etc).
+O direito de modificar ou destruir um objeto é sempre o privilégio do proprietário 
+apenas.
+
+Um objeto pode ser atribuído a um novo proprietário com um comando ALTER de tipo 
+apropriado para o objeto, por exemplo:
+
+ALTER TABLE tabela_nome OWNER TO novo_proprietario;
+
+Superusuários podem sempre fazer isso; papéis comuns só podem fazê-lo se forem tanto
+ o proprietário atual 
+do objeto (ou um membro do papel proprietário) quanto um membro do novo papel 
+proprietário.
+
+Para atribuir privilégios, o comando GRANT é usado. Por exemplo, se alice é um papel 
+existente, e tabela1 é uma 
+tabela existente, o privilégio para atualizar a tabela pode ser concedido com:
+
+-- VAMOS NOS CONECTAR AO BANCO CLIENTE E RODAR:
+
+GRANT UPDATE ON customer TO joe;
+
+Para conceder um privilégio a um papel com a opção de que ele possa por sua vez 
+concedê-lo a outros, escreva:
+
+GRANT UPDATE, SELECT, DELETE ON customer TO joe WITH GRANT OPTION;
+
+Para revogar um privilégio:
+
+REVOKE UPDATE ON customer FROM joe;
+
+---
+
+Privilégios de Coluna
+
+Os privilégios de coluna permitem controlar o acesso a colunas específicas, 
+separadamente de outras colunas na mesma tabela. Por exemplo:
+
+GRANT SELECT (id), UPDATE (city, phone) ON customer TO joe;
+
+---
+
+Privilégios de Default:
+Os privilégios default determinam os privilégios que serão aplicados a objetos criados 
+no futuro, no banco de dados que estou conectado quando dei este comando.
+
+Por exemplo:
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT, UPDATE ON TABLES TO joe;
+
+Para ver mais tipos de privilegios:
+https://www.postgresql.org/docs/current/ddl-priv.html
+
+Considerações de Segurança
+A capacidade de conceder e revogar privilégios é uma ferramenta poderosa que deve ser 
+usada com cuidado. Em geral, é melhor conceder apenas os privilégios mínimos 
+necessários para cada papel fazer seu trabalho.
+Para bancos de dados com múltiplos usuários, é geralmente aconselhável criar papéis de 
+grupo para gerenciar privilégios.
+
+Implica em Privilégios
+Alguns privilégios implicam automaticamente em outros. 
+Por exemplo, o privilégio UPDATE em uma tabela também 
+requer SELECT para que o papel possa identificar quais linhas atualizar. 
+Em alguns casos, esses privilégios 
+implícitos precisam ser explicitamente concedidos, especialmente ao lidar com funções 
+e procedimentos armazenados.
+
+Propriedade dos Objetos
+A propriedade de um objeto não pode ser transferida entre bancos de dados. 
+Dentro de um banco de dados, 
+a propriedade pode ser transferida usando comandos ALTER apropriados ou o comando 
+REASSIGN OWNED, COMO JA VIMOS.
+
+-- ------------------------FIM
+

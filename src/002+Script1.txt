@@ -1,0 +1,849 @@
+Curso PostGreSQL Completo
+Instrutor: Sandro Servino
+https://www.linkedin.com/in/sandroservino/?originalSubdomain=pt
+
+-------------------------------------------------------------------------------------------------------------------------------------
+
+No PostgreSQL 17, a estrutura de diretórios dentro do diretório data 
+segue um padrão semelhante ao das versões anteriores, mas pode ter 
+algumas mudanças sutis dependendo das configurações e do sistema 
+operacional. O diretório data é o local onde o PostgreSQL armazena seus 
+arquivos de configuração, logs, e, principalmente, os dados do banco.
+
+Vamos dar uma olhada no diretorio DATA:
+
+C:\Program Files\PostgreSQL\17\data
+
+Estrutura de Diretórios do PostgreSQL 17 (data)
+
+base/
+
+Contém os diretórios e arquivos dos bancos de dados individuais.
+Cada banco de dados tem um diretório próprio, cujo nome é o OID do banco.
+Dentro de cada diretório de banco, os arquivos de tabelas e índices 
+são armazenados.
+
+Oque é OID no PostgreSQL?
+OID (Object Identifier) é um identificador numérico único atribuído 
+a objetos do banco de dados, como tabelas, bancos de dados e outras 
+entidades. No caso dos bancos de dados, cada um recebe um OID único 
+no momento da criação.
+
+Como descobrir o OID do banco de dados?
+Para saber qual desses diretórios pertence ao seu banco de dados 
+chamado bancox, execute este comando no psql:
+
+SELECT oid, datname FROM pg_database WHERE datname = 'bancox';
+SELECT oid, datname FROM pg_database;
+
+** DICA:
+
+Os bancos de dados template0 e template1 são bancos especiais 
+no PostgreSQL usados como modelos para a criação de novos 
+bancos de dados. Eles não aparecem no pgAdmin por padrão porque 
+são bancos do sistema e não devem ser alterados diretamente.
+
+📌 O que é o template1?
+O template1 é o modelo padrão para a criação de novos bancos de dados.
+
+Quando você executa:
+CREATE DATABASE meu_banco;
+
+O PostgreSQL copia todos os objetos do template1 para o novo banco.
+Você pode modificar o template1 (por exemplo, adicionando extensões), 
+e essas mudanças serão replicadas em novos bancos criados a partir dele.
+
+exemplo:
+\c template1
+CREATE EXTENSION IF NOT EXISTS nome_da_extensao;
+
+Vamos ver isto no futuro.
+
+📌 O que é o template0?
+O template0 é um modelo imutável, usado quando você precisa criar 
+um banco de dados "limpo", sem customizações.
+Ele não pode ser modificado e é usado para restaurar o estado original 
+de um banco. Se precisar criar um banco sem customizações do template1, 
+use:
+
+CREATE DATABASE meu_banco TEMPLATE template0;
+
+--
+
+global/
+
+o diretório global/ armazena informações globais que são compartilhadas 
+entre todos os bancos de dados da instancia ou do cluster Postgres.
+
+Principais Arquivos no Diretório global/
+
+pg_filenode.map:
+Função: Este arquivo mapeia os identificadores internos (filenodes)
+para os arquivos físicos que armazenam as tabelas e índices no sistema 
+de arquivos.
+
+pg_internal.init:
+Função: Utilizado para inicializar a estrutura interna do banco de dados, 
+configurando aspectos essenciais para o funcionamento do Postgres.
+
+pg_control:
+Função: Contém informações críticas sobre o estado do banco de dados, 
+como a versão do PostgreSQL, o número do último checkpoint e detalhes 
+sobre os arquivos WAL (Write-Ahead Logging). 
+Este arquivo é fundamental para a recuperação do banco de dados após 
+falhas.
+
+config_exec_params:
+Função: Armazena parâmetros de configuração utilizados pelo PostgreSQL 
+durante a execução, influenciando o comportamento do sistema em tempo 
+de operação.
+
+Esses arquivos são essenciais para a operação interna do PostgreSQL 
+e devem ser manipulados com cautela. Alterações inadequadas podem 
+comprometer a integridade e a estabilidade do banco de dados.
+
+--
+
+pg_wal/
+
+O diretório pg_wal/ no PostgreSQL armazena os arquivos de 
+Write-Ahead Logging (WAL), que registram todas as operacoes de mudanças no 
+banco de dados antes de serem aplicadas no arquivo final de dados. 
+Esses arquivos são fundamentais para:
+
+- Recuperação de falhas (permite restaurar o banco em caso de crash).
+- Replicação (sincronização entre servidores primário e réplica).
+- Point-in-Time Recovery (PITR) (recuperação até um ponto específico no tempo).
+- O PostgreSQL mantém esses arquivos até que sejam arquivados ou 
+  não sejam mais necessários.
+
+Antes do PostgreSQL 10, esse diretório era chamado de pg_xlog/.
+
+WAL TEM TUDO A VER EM BANCO DE DADOS RELACIONAL COM O CONCEITO ACID:
+
+O conceito ACID no PostgreSQL (e em bancos de dados transacionais em geral)
+se refere a quatro propriedades fundamentais para garantir a 
+integridade dos dados:
+
+. Atomicidade (A - Atomicity): Uma transação deve ser tudo ou nada. 
+Se qualquer parte falhar, todas as alterações são revertidas.
+
+. Consistência (C - Consistency): O banco deve sempre permanecer 
+em um estado válido antes e depois da transação.
+
+. Isolamento (I - Isolation): Transações concorrentes não devem interferir 
+umas nas outras de maneira indesejada, por exemplo, dois processos
+nao podem alterar o mesmo dado no mesmo momento, e o banco de dados
+protege atraves de locks, que iremos ver no futuro.
+
+. Durabilidade (D - Durability): Após um commit, os dados devem ser 
+gravados permanentemente, mesmo em caso de falha do sistema.
+
+Como o WAL garante ACID?
+O Write-Ahead Logging (WAL) desempenha um papel crucial para garantir ACID,
+como por exemplo:
+
+O PostgreSQL escreve todas as alterações nos files do WAL log antes de 
+aplicá-las nos files de dados do banco de dados. Isso significa que, 
+mesmo que ocorra uma falha antes de os dados serem gravados nos arquivos
+de dados no disco, as mudanças podem ser recuperadas ao reiniciar o Postgres,
+através da leitura das transacoes completadas que foram registradas 
+nos files do WAL Log no disco.
+
+Se uma transação falha no meio do processo, as operações registradas 
+no WAL Log sem o commit podem ser desfeitas, garantindo que nenhuma 
+mudança parcial permaneça. 
+
+No caso de um crash, o PostgreSQL quando reinicializa lê os 
+registros do WAL log e reexecuta as transacoes comitadas mas que 
+nao tinham sido ainda garantidos nos files de dados no disco ou desfaz 
+transações incompletas para restaurar o banco a um estado consistente.
+
+Dessa forma, o WAL log não só melhora a segurança e confiabilidade do 
+PostgreSQL, como também viabiliza a replicação e o Point-in-Time 
+Recovery (PITR), mas vamos vamos muito sobre isto ainda.
+
+--
+
+pg_commit_ts/
+
+Contém timestamps de commits, se o recurso estiver habilitado.
+Esse recurso continua sendo opcional e depende da configuração 
+track_commit_timestamp, mas vamos falar sobre configuracoes de
+parametros de start depois.
+
+Para que isso é usado?
+- Replicação lógica: Ajuda a resolver conflitos em replicações 
+  multi-master.
+- Monitoramento e auditoria: Permite verificar a ordem dos commits 
+  e quando uma transação foi finalizada.
+
+Se track_commit_timestamp estiver desligado (valor padrão), o diretório 
+pg_commit_ts/ fica vazio.
+
+Se você deseja habilitar esse recurso, pode configurar o parâmetro 
+track_commit_timestamp no arquivo de configuração postgresql.conf:
+
+track_commit_timestamp = on
+
+--
+
+pg_logical/
+
+O diretório pg_logical/ no PostgreSQL armazena informações relacionadas
+ à replicação lógica. Esse recurso permite replicação de dados entre 
+diferentes instâncias do PostgreSQL, capturando as mudanças de dados 
+(inserções, atualizações, exclusões) em tempo real. 
+A replicação lógica é usada em cenários como replicação seletiva de 
+tabelas ou replicação entre diferentes versões de PostgreSQL, 
+e é comumente utilizada para distribuição de dados ou migração de dados.
+
+--
+
+pg_notify/
+
+Armazena dados sobre notificações assíncronas (LISTEN/NOTIFY).
+
+O PostgreSQL permite que processos do banco de dados enviem e recebam 
+notificações sem precisar verificar constantemente 
+as tabelas (evitando polling).
+
+o mecanismo LISTEN/NOTIFY do PostgreSQL tem algumas semelhanças 
+com o Service Broker do SQL Server(servico de mensageria), 
+como por exemplo:
+✅ Comunicação assíncrona: Ambos permitem que processos do banco se 
+comuniquem sem precisar consultar tabelas constantemente.
+✅ Eventos internos no banco: Podem ser usados para notificar processos 
+sobre mudanças ou eventos importantes.
+✅ Desempenho melhor que polling: Eliminam a necessidade de consultas 
+frequentes para detectar alterações.
+✅ Pode ser usado como parte de um sistema de cache para conexões 
+de usuários.
+
+--
+
+pg_replslot/
+
+O diretório pg_replslot/ armazena informações relacionadas 
+à replicação no PostgreSQL, tanto para replicação física quanto lógica.
+
+Objetivo:
+Guardar registros de mudanças no banco: Ele garante que os registros 
+de alterações feitos no banco de dados sejam mantidos disponíveis 
+até que sejam consumidos por outro sistema ou servidor.
+
+Sincronização entre servidores: Esse diretório é utilizado para 
+sincronizar dados entre servidores, impedindo que registros importantes 
+sejam apagados antes de serem replicados.
+
+Controle de dados replicados: Ele facilita o processo de replicação, 
+ajudando a controlar quais dados foram lidos e replicados para outras 
+instâncias do banco.
+
+Em resumo, a função desse diretório é gerenciar a replicação de dados 
+para garantir que as informações sejam transmitidas corretamente 
+e de maneira eficiente entre servidores.
+
+Mas porque tenho um outro diretorio para replicacao logica?
+
+O PostgreSQL oferece dois tipos de replicação: física e lógica. 
+Embora ambos envolvam a replicação de dados, a replicação lógica, 
+especialmente com a extensão pg_logical, tem um controle mais detalhado 
+e flexível sobre quais dados serão replicados, podendo por exemplo
+replicar apenas um determinado banco de dados ou mesmo tabela de 
+um banco de dados, enquanto a replicacao fisica, replica de forma
+binaria todos os arquivos da instancia postgres e nao permite
+selecionar objetos especificos.
+
+pg_logical/ é dedicado a armazenar informações especificas 
+sobre a replicação lógica 
+enquanto pg_replslot/ gerencia a replicação de forma mais geral 
+(incluindo a replicação física).
+
+--
+
+pg_serial/
+
+Contém informações sobre transações serializáveis.
+
+O que são transações serializáveis?
+No PostgreSQL ou em qualquer banco de dados relacional sério que 
+siga o padrao SQL ANSI/ISO de nivel de isolamento, o nível de isolamento 
+serializável é o mais alto de todos os níveis de isolamento de transações. 
+Ele garante que as transações sejam executadas de forma que o resultado 
+final seja o mesmo se as transações fossem realizadas de forma 
+sequencial (uma após a outra), sem interferência entre elas, 
+mesmo que estejam sendo executadas de forma concorrente.
+
+Quando várias transações estão ocorrendo simultaneamente, o PostgreSQL 
+precisa garantir que não haja anomalias como leituras sujas, 
+leituras fantasmas ou gravações perdidas. No nível serializável, 
+ele faz isso verificando e evitando condições onde o resultado de 
+transações concorrentes poderia ser inconsistente.
+
+Os quatro níveis de isolamento de transações estabelecidos 
+pela ISO (International Organization for Standardization) são:
+
+1. Read Uncommitted (Leitura não confirmada)
+Descrição: Permite que uma transação leia dados que ainda não foram 
+confirmados por outras transações (também conhecidos como "dirty reads").
+Problema: Pode resultar em leituras imprecisas, pois as transações 
+podem ler dados que depois podem ser desfeitos com um rollback.
+
+2. Read Committed (Leitura confirmada)
+Descrição: Garante que uma transação leia apenas dados que foram 
+confirmados (committed) por outras transações.
+Problema: Pode ocorrer o fenômeno de non-repeatable reads, onde, 
+se você ler um valor em uma transação e depois tentar ler o mesmo 
+valor novamente, ele pode ter mudado devido a uma outra 
+transação confirmada.
+
+3. Repeatable Read (Leitura repetível)
+Descrição: Garante que, durante toda a transação, os dados lidos não 
+serão alterados por outras transações, evitando o problema de 
+non-repeatable reads.
+Problema: Pode ocorrer phantom reads (leituras fantasmas), 
+onde novas linhas podem ser inseridas por outras transações que afetam 
+o resultado da sua consulta.
+
+4. Serializable (Serializável)
+Descrição: É o nível de isolamento mais alto. Ele garante que o 
+comportamento da transação será equivalente a se as transações fossem 
+executadas sequencialmente, uma após a outra, sem sobreposição.
+
+Garantia: Evita todos os tipos de anomalias, incluindo dirty reads, 
+non-repeatable reads e phantom reads. Porém, pode causar grandes 
+bloqueios e diminuir muito a concorrência e trazer grandes problemas
+de performance para o seu ambiente.
+
+Padrão do PostgreSQL 17
+O nível de isolamento padrão no PostgreSQL 17 é o Read Committed.
+
+Isso significa que, por padrão, o PostgreSQL garantirá que as transações 
+só possam ler dados confirmados por outras transações. 
+Porém, ele permite que os dados lidos possam ser alterados por outras 
+transações enquanto a transação corrente está em andamento, 
+o que pode resultar em non-repeatable reads.
+
+Se você quiser usar um nível de isolamento mais restrito, 
+como Repeatable Read ou Serializable, pode configurar 
+isso explicitamente na transação com o comando 
+SET TRANSACTION ISOLATION LEVEL, dentro de uma stored procedure
+por exemplo que seja critica para o sistema, mas vamos conversar mais
+para frente.
+
+--
+
+pg_snapshots/
+
+O diretório pg_snapshots/ no PostgreSQL armazena snapshots de transações, 
+especialmente úteis para o nível de isolamento Repeatable Read e
+read commited.
+
+Um snapshot é uma visão consistente do banco de dados em um determinado 
+ponto no tempo. Quando uma transação começa, o PostgreSQL tira um 
+snapshot para garantir que ela veja os mesmos dados até seu término, 
+mesmo que outras transações façam alterações.
+
+OBS: O PostgreSQL, assim como o MySQL (InnoDB) e o Oracle, 
+usa MVCC (Multiversion Concurrency Control), permitindo que SELECT 
+não bloqueie UPDATE/DELETE e vice-versa. Isso melhora a concorrência e
+evita bloqueios desnecessários.
+
+Já no SQL Server, o comportamento padrão é pessimista, onde SELECT 
+pode bloquear UPDATE/DELETE e vice-versa. No entanto, esse comportamento 
+pode ser alterado ativando o parâmetro READ_COMMITTED_SNAPSHOT de um 
+determinado banco de dados, o que faz o SQL Server adotar um mecanismo 
+similar ao MVCC.
+
+--
+
+pg_stat/
+
+Armazena estatísticas detalhadas sobre a atividade da instancia Postgres
+e dos bancos de dados hospedados nesta instancia, 
+coletadas pelo sistema de monitoramento interno do PostgreSQL.
+
+As estatísticas são informações coletadas pelo PostgreSQL sobre o uso 
+do banco de dados, como:
+
+. Leituras e gravações de dados.
+. Operações de consulta (SELECT, INSERT, UPDATE, DELETE).
+. Uso de índices.
+. Bloqueios de tabelas e registros.
+. Desempenho das transações.
+
+Essas estatísticas ajudam os administradores de banco de dados (DBAs) 
+a entender como o banco de dados está sendo usado e onde há potenciais 
+problemas de desempenho.
+
+--
+
+pg_stat_tmp/
+
+Armazena estatísticas temporárias em execução.
+
+Essas estatísticas são dados voláteis, ou seja, elas não são persistentes 
+e são apenas temporárias. O conteúdo é recriado ao reiniciar o PostgreSQL.
+
+Ele contém arquivos temporários usados pelo coletor de estatísticas 
+do PostgreSQL. Essas estatísticas incluem informações sobre:
+
+1️ Uso de tabelas e índices
+Número de páginas lidas e escritas.
+Quantidade de tuplas (linhas) inseridas, atualizadas e excluídas.
+
+2️ Atividade do Autovacuum
+Quantidade de autoanálises (autovacuum analyze) realizadas.
+Estatísticas sobre auto-vacuums executados.
+
+3️ Atividade do backend (sessões de usuários)
+Informações temporárias sobre as conexões e atividades recentes.
+
+4️ Número de commits e rollbacks
+Contagem temporária de transações confirmadas e desfeitas antes 
+de serem persistidas.
+
+5️ Estatísticas de E/S (I/O)
+Quantidade de blocos de disco lidos e gravados.
+
+As estatísticas armazenadas nesse diretório são úteis para que o 
+PostgreSQL possa ajustar o desempenho de consultas em tempo real 
+e tomar decisões rápidas sobre o uso de recursos (como memória e CPU).
+
+Diferença entre pg_stat/ e pg_stat_tmp/:
+
+pg_stat/: Contém estatísticas mais permanentes e gerais sobre a atividade 
+do Postgres.
+
+pg_stat_tmp/ → Armazena estatísticas temporárias, que são descartadas 
+ao reiniciar o PostgreSQL.
+
+--
+
+pg_subtrans/
+
+O diretório pg_subtrans/ no PostgreSQL armazena informações sobre 
+subtransações, que são transações dentro de outras transações. 
+As subtransações são usadas para fornecer um controle mais granular 
+sobre transações compostas, permitindo que o banco de dados trate 
+falhas e reversões de maneira eficiente, sem precisar reverter a 
+transação principal inteira.
+
+O que são subtransações?
+Uma subtransação é uma transação que ocorre dentro de uma transação 
+principal. Elas permitem que certas partes de uma transação maior 
+possam ser completadas ou revertidas independentemente, sem afetar 
+toda a transação. Isso é útil, por exemplo, quando se quer 
+commit (confirmar) parte de uma transação, mas ainda manter a 
+possibilidade de rollback (desfazer) outras partes.
+
+--
+
+pg_tblspc/
+
+O diretório pg_tblspc/ no PostgreSQL armazena links simbólicos que 
+apontam para os diretórios físicos onde o PostgreSQL armazenará os 
+arquivos dos tablespaces.
+
+Um tablespace é um container lógico no PostgreSQL, que possui diretórios 
+físicos no disco onde os dados e objetos do banco de dados 
+(como tabelas, índices, etc.) são armazenados. Ele permite a distribuição 
+dos dados em diferentes dispositivos de armazenamento. 
+Em outras palavras, um tablespace permite que o administrador do banco 
+de dados defina onde os arquivos de dados do banco (como tabelas, 
+índices e outros objetos) serão fisicamente armazenados, separando-os 
+de outros dados ou distribuindo-os por diferentes discos para melhorar 
+o desempenho.
+
+Quando um tablespace é criado no PostgreSQL (usando o comando 
+CREATE TABLESPACE), você especifica um caminho de diretório no sistema 
+de arquivos onde o PostgreSQL deve armazenar os dados. 
+O PostgreSQL, então, cria um link simbólico dentro do diretório 
+pg_tblspc/, apontando para esse diretório de dados físico.
+
+--
+
+pg_twophase/
+
+Contém informações sobre transações preparadas em um ambiente 
+de two-phase commit(2PC).
+
+O 2PC é um processo geralmente utilizado em ambientes distribuídos 
+(como replicação e clusters), onde várias instâncias de banco de dados 
+precisam garantir que uma transação seja completada de forma consistente 
+em todos os lugares.
+
+O diretório pg_twophase/ assegura que as transações possam ser 
+completadas corretamente ou revertidas, mesmo após falhas ou 
+reinicializações do sistema.
+
+--
+
+pg_multixact/
+
+O diretório pg_multixact/ no PostgreSQL armazena informações sobre 
+múltiplos bloqueios de transações quando mais de uma transação 
+precisa bloquear a mesma linha ao mesmo tempo.
+
+No PostgreSQL, quando duas ou mais transações precisam compartilhar 
+o bloqueio de uma mesma linha, o banco cria um MultiXact (
+ou "transação múltipla").
+
+Esse mecanismo permite que mais de uma transação seja "dona" 
+de um bloqueio ao mesmo tempo.
+
+Vamos conversar sobre locks no futuro.
+
+--
+
+
+log/ (se configurado para armazenar logs no diretório data, 
+MAS É DEFAULT DA INSTALACAO)
+
+Contém arquivos de log do PostgreSQL, se configurado para armazenar 
+logs nesse local.
+
+Sempre que tiver algum problema, como por exemplo o PostgreS nao
+da start, verifica o ultimo arquivo de log, abra o conteudo
+e procure os erros.
+
+C:\Program Files\PostgreSQL\17\data\log
+
+Por exemplo:
+2025-03-16 08:18:16.738 GMT [13224] FATAL:  database "teste" does not exist
+
+--
+
+Arquivos importantes no diretório raiz (data/)
+
+- postgresql.conf: Arquivo principal de configuração do PostgreSQL, 
+  que é lido pelo servico Postgres quando do start, e por exemplo,
+  aloca mais memoria ram do servidor para o Postgres.
+- pg_hba.conf: Configuração de autenticação (métodos de conexão).
+- pg_ident.conf: Mapeamento de identidades de usuários.
+- PG_VERSION: Arquivo que contém a versão do PostgreSQL usada no cluster.
+
+VAMOS DETALHAR MAIS UM POUCO SOBRE ESTES FILES:
+
+1. postgresql.conf – Arquivo Principal de Configuração do PostgreSQL
+
+Este é o principal arquivo de configuração do PostgreSQL e controla 
+diversos aspectos do funcionamento do Postgres. Ele define desde 
+parâmetros básicos, como localização dos logs, 
+até otimizações de desempenho e comportamento da replicação.
+
+📌 Localização:
+/var/lib/postgresql/17/data/postgresql.conf (em distribuições Linux)
+C:\Program Files\PostgreSQL\17\data\postgresql.conf (em Windows)
+
+🔧 Principais configurações:
+
+Configurações Gerais:
+
+data_directory = '/var/lib/postgresql/17/data' 
+→ Define onde os dados do PostgreSQL estão armazenados.
+
+hba_file = '/var/lib/postgresql/17/data/pg_hba.conf'
+ → Especifica o caminho do arquivo de autenticação (pg_hba.conf).
+
+ident_file = '/var/lib/postgresql/17/data/pg_ident.conf' 
+→ Define o caminho do arquivo de mapeamento de identidades 
+  (pg_ident.conf).
+
+Configurações de Rede e Conexão:
+
+listen_addresses = 'localhost' 
+→ Define em quais endereços IP o PostgreSQL vai aceitar conexoes
+(pode ser * para aceitar conexões de qualquer IP).
+
+port = 5432 → Define a porta de escuta do PostgreSQL.
+
+max_connections = 100 → Número máximo de conexões simultâneas permitidas.
+
+Configurações de Memória e Performance:
+
+shared_buffers = 128MB 
+→ Quantidade de memória compartilhada usada pelo PostgreSQL.
+
+work_mem = 4MB → Memória usada para operações temporárias como 
+ordenações e joins.
+
+maintenance_work_mem = 64MB → Memória alocada para operações 
+de manutenção como VACUUM e CREATE INDEX.
+
+Configuração de Logs:
+
+logging_collector = on 
+→ Ativa o coletor de logs.
+
+log_directory = 'pg_log' 
+→ Diretório onde os logs serão armazenados.
+
+log_filename = 'postgresql-%Y-%m-%d_%H%M%S.log' 
+→ Nome do arquivo de log, incluindo data e hora.
+
+Configuração de Autovacuum:
+
+autovacuum = on 
+→ Habilita a execução automática do processo de limpeza VACUUM.
+
+autovacuum_vacuum_threshold = 50 
+→ Número de atualizações/deletes antes do VACUUM ser acionado.
+
+Configuração de Replicação e Backup:
+
+wal_level = replica 
+→ Define o nível de registro do Write-Ahead Logging (WAL).
+
+max_wal_senders = 10 
+→ Número máximo de conexões de replicação permitidas.
+
+archive_mode = on 
+→ Ativa o arquivamento de WAL para backups.
+
+📌 Modificação:
+Para alterar qualquer configuração, edite o arquivo e reinicie 
+o PostgreSQL.
+
+Essa estrutura pode variar se houver configurações personalizadas, 
+como o uso de tablespaces externos 
+ou configuração diferente para armazenamento de logs e WALs.
+
+--
+
+2. pg_hba.conf – Configuração de Autenticação (Métodos de Conexão)
+
+Esse arquivo define quais usuários podem acessar o banco de dados, de 
+quais endereços IP e qual método de autenticação será utilizado.
+
+📌 Localização:
+
+No windows:
+C:\Program Files\PostgreSQL\17\data\pg_hba.conf
+
+No linun:
+/var/lib/postgresql/17/data/pg_hba.conf
+
+🔒 Formato das linhas:
+Cada linha segue a estrutura:
+
+# Tipo      Banco       Usuário      Endereço          Método de Autenticação
+host        all         xpto         192.168.1.0/24    peer map=mymap 
+ 		
+Tipo: local, host, hostssl, hostnossl
+Banco: Nome do banco de dados (all significa todos)
+Usuário: Nome do usuário (all significa qualquer usuário)
+Endereço: Pode ser um IP ou um intervalo (exemplo: 192.168.1.100 
+          ou 192.168.1.0/24)
+Método de Autenticação:
+  md5 → Solicita senha criptografada.
+  scram-sha-256 → Autenticação mais segura que md5.
+  trust → Permite acesso sem senha (não recomendado).
+  peer → Permite autenticação pelo nome do usuário do SO.
+  ident → Similar ao peer, mas usa um serviço externo.
+
+OBS:
+"local" is for Unix domain socket connections only
+
+📌 Exemplo de configuração, usando o user conectado no SO, desde
+   que o mesmo tenha permissao de acessar banco de dados e os objetos
+   no Postgres:
+
+# Permite conexões locais sem senha para o usuário postgres
+local       all         postgres                          peer map=mymap
+
+# Permite conexões de qualquer usuário vindo de 192.168.1.0/24 
+usando senha MD5
+host    all             all             192.168.1.0/24        md5
+
+# Permite conexões remotas apenas para o usuário replicator 
+via senha criptografada
+host    replication     replicator      10.0.0.5/32           scram-sha-256
+
+📌 Modificação:
+Após qualquer alteração, é necessário recarregar as configurações com:
+
+pg_ctl reload
+
+Ou:
+
+systemctl reload postgresql
+
+--
+
+3. pg_ident.conf – Mapeamento de Identidades de Usuários
+
+Esse arquivo permite mapear usuários do sistema operacional para usuários 
+do PostgreSQL. 
+Ele é útil para autenticação via peer ou ident.
+
+📌 Localização:
+
+No windows:
+C:\Program Files\PostgreSQL\17\data\pg_ident.conf
+
+No linux:
+/var/lib/postgresql/17/data/pg_ident.conf
+
+🔄 Formato das linhas:
+
+# Put your actual configuration here
+# ----------------------------------
+# MAPNAME       SYSTEM-USERNAME         PG-USERNAME
+
+exemplo:
+
+# Nome do Mapeamento   Usuário SO      Usuário PostgreSQL
+mymap                  sandro         xpto
+mymap		       ricardo        xpto2
+
+📌 Como funciona?
+
+Se no pg_hba.conf estiver configurado assim:
+
+local all all peer map=mymap
+
+O PostgreSQL verificará pg_ident.conf e permitirá que sandro 
+(usuário do sistema) se autentique 
+como admin_pg (usuário do PostgreSQL).
+
+📌 Modificação:
+Após mudanças, recarregar com:
+
+pg_ctl reload
+
+--
+
+4. PG_VERSION – Arquivo com a Versão do PostgreSQL
+
+Esse é um arquivo simples que contém apenas um número 
+representando a versão do Postgres instalado.
+
+📌 Localização:
+
+No Windows:
+C:\Program Files\PostgreSQL\17\data\PG_VERSION
+
+No Linux:
+/var/lib/postgresql/17/data/PG_VERSION
+
+📌 Conteúdo:
+
+Ele exibirá algo como:
+
+17
+
+Isso significa que a versão do Postgres é a 17.
+
+----------------------------------------------------------------------------------
+
+---------- MUDANDO DE ASSUNTO
+
+DESLIGANDO O SERVIDOR POSTGRESQL DE FORMA SEGURA
+
+A forma mais segura de parar o serviço PostgreSQL no Windows é utilizando 
+o Gerenciador de Serviços ou os comandos apropriados no terminal. 
+Aqui estão as opções detalhadas:
+
+1. Pelo Gerenciador de Serviços
+.Abra o Gerenciador de Serviços:
+Pressione Win + R, digite services.msc e pressione Enter.
+Localize o serviço PostgreSQL:
+Procure por um serviço chamado algo como PostgreSQL - versão 
+(por exemplo, PostgreSQL - 15).
+Pare o serviço:
+Clique com o botão direito no serviço e selecione Parar.
+Aguarde até que o status do serviço mude para "Parado".
+
+OBS: EVITE SIMPLESMENTE DAR UM SHUTDOWN NO WINDOWS SERVER OU PIOR A VM. 
+ANTES PARE O POSTGRESQL E ASSIM
+TERA GARANTIR QUE SEU BANCO DE DADOS ESTARÁ INTEGRO. 
+É RARO DAR PROBLEMA NO BANCO MESMO COM PARADAS INESPERADAS 
+DO WINDOWS OU DO SERVIDOR, MAS MELHOR PREVENIR DO QUE REMEDIAR.
+
+2.Se quiser parar via comando do DOS
+Va para o DOS como administrator, com o comando CMD.
+
+OBS: SE FOR PARA O DOS SEM MODO ADMINSTRADOR NAO PODERA
+PARAR DEVIDO FALTA DE PRIVILEGIO.
+
+E VA PARA A PASTA ONDE INSTALOU O POSTGRESQL. NO MEU CASO:
+CD C:\Program Files\PostgreSQL\17\bin
+
+net stop postgresql-x64-17
+
+PARA VER O STATUS DE UM SERVICO:
+sc query postgresql-x64-17
+
+Ou pelo services do windows.
+
+O comando net stop postgresql-x64-17 envia um sinal de parada padrão 
+ao serviço do PostgreSQL.
+
+Isso significa que:
+✔️ O PostgreSQL aguarda todas as conexões ativas terminarem.
+✔️ Nenhuma transação ativa é interrompida abruptamente.
+✔️ Pode demorar se houver conexões longas.
+
+Aqui estão OUTROS três comandos para parar o PostgreSQL, com uma 
+explicação rápida:
+
+1️ Parada segura (aguarda conexões finalizarem normalmente)
+
+pg_ctl -D "C:\Program Files\PostgreSQL\17\data" stop -m smart
+
+✔️ Método mais seguro.
+✔️ Espera as conexões terminarem antes de desligar.
+
+2️ Parada rápida (finaliza conexões ativas imediatamente)
+
+pg_ctl -D "C:\Program Files\PostgreSQL\17\data" stop -m fast
+
+⚡ Finaliza as conexões ativas rapidamente.
+⚡ Mais rápido, mas pode causar rollback de transações em andamento.
+
+3️ Parada forçada (mata os processos sem esperar nada)
+
+pg_ctl -D "C:\Program Files\PostgreSQL\17\data" stop -m immediate
+
+🚨 Desliga imediatamente, sem esperar conexões finalizarem.
+🚨 Pode exigir recuperação na próxima inicialização. 
+(Use só em emergências, POIS PODE TER ATE PERDA DE DADOS OU 
+SEU SERVICO NAO SUBIR A DEPENDER DO QUE ESTAVA RODANDO!)
+
+RESULTADO:
+C:\Program Files\PostgreSQL\17\bin>pg_ctl -D "C:\Program Files\PostgreSQL\17\data" stop
+waiting for server to shut down.... done
+server stopped
+
+SE APAREU ALGUMA TELA DO FIREWALL PEDINDO PERMISSAO A SER DADO PARA 
+O SERVICO POSTGRESQL SER INICIADO, PODE PERMITIR.
+
+VEJA SE O SERVICE DO POSTGRESQL EM SERVICES FOI PARADO.
+PODE VER VIA COMANDO OU NO SERVICES
+
+pg_ctl -D "C:\Program Files\PostgreSQL\17\data" status
+
+SE VOCE FOR EM SERVICES VAI CONSEGUIR DAR START NOVAMENTE NO SERVICO, OU
+RODE O COMANDO ABAIXO COMO ADMINISTRATOR NO DOS:
+
+net start postgresql-x64-17
+
+PARA VER O STATUS DE UM SERVICO:
+
+sc query postgresql-x64-17
+
+
+----------------------------------------------------------------------------------------------------------
+FIM
+
+
+
+
+
+
+
+
+
+
