@@ -1,0 +1,22 @@
+Curso PostGreSQL Completo
+Instrutor: Sandro Servino
+https://www.linkedin.com/in/sandroservino/?originalSubdomain=pt
+
+DESINSTALAR O POSTGRES OU UM COMPONENTE ESPECIFICO
+
+Se quiser por exemplo desinstalar uma versao antiga por exemplo do PGADMIN ou 
+mesmo o POSTGRES, no windows:
+
+1. Tecla o botao do windows no seu teclado ou em procura, digite:
+appwiz.cpl
+
+2. Procure PostgreSQL Versao x.
+
+3. De um duplo clique
+
+4. Selecione se quer desinstalar todo o POSTGRES ou uma aplicacao especifica como
+uma versao antiga do PGADMIN
+
+5. Se for uma aplicacao como PGADMIN que queira desinstalar, selecione esta opcao, e
+marque o software que quer desinstalar.
+

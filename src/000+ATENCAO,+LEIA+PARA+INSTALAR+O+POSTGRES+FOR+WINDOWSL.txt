@@ -1,0 +1,37 @@
+Curso PostGreSQL Completo
+Instrutor: Sandro Servino
+https://www.linkedin.com/in/sandroservino/?originalSubdomain=pt
+
+Caro(a) Aluno(a), como a Comunidade PostgreS pode mudar o local 
+onde os arquivos sao liberados para download, resolvi disponibilizar o instalador no meu
+mega driver e no google driver, mas minha indicacao é que sempre que for possivel, 
+baixe dos sites oficiais.
+
+DOWNLOAD POSTGRESQL PARA WINDOWS (341MB)
+
+Poderá baixar a versao demonstrada no curso diretamente deste link:
+https://mega.nz/file/0X1lGIwJ#NwMoRsjbGcfgcq9PnRLHYVe5oVOfVHX-iFGhxcpnj3o
+
+ou deste link
+https://drive.google.com/file/d/1KYq3ImWCWMsUYkCs7Eocgm6BFZmP6oHU/view?usp=sharing
+
+Vou deixar ainda o link para baixar versao pgadmin:
+https://drive.google.com/file/d/1Gb9VXi8icX4oXBDb7cMrlM7IURzrce5w/view?usp=sharing
+
+ESTE É O CORE DO POSTGRESQL, MAS EXISTEM VÁRIAS EXTENSOES QUE NAO ESTAO DENTRO DA INSTALACAO CORE
+DO POSTGRESQL, OU SEJA, VARIAS FERRAMENTAS EXTERNAS QUE FORAM DESENVOLVIDAS PELA COMUNIDADE 
+QUE NAO ESTAO NOS BINARIOS DO CORE DO POSTGRESQL, MAS QUE PODEM SER BAIXADOS DEPOIS E INSTALADOS
+CONFORME NECESSIDADE E SAO 100% COMPATIVEIS COM OS BINARIOS DO CORE DO POSTGRESQL 
+QUE VC IRA BAIXAR E INSTALAR.
+
+NESTE INSTALADOR VOCE TERÁ ACESSO AO CORE DO POSTGRES E A FERRAMENTA PARA ADMINISTRACAO DO
+POSTGRES, CHAMADO PGADMIN.
+
+Obrigado
+Sandro Servino
+
+
+
+---------------------------------------------------------------------------------------------------------------
+
+

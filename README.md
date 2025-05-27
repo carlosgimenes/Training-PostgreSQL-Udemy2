@@ -1,4 +1,4 @@
-# Training LocalTreinamento - NomeDoTreinamento
+# Udemy - Banco de Dados Postgres, Modelagem de Dados e programação usando SQL - do Básico ao Avançado
 
 ## Estrutura do Repositório
 
@@ -24,5 +24,5 @@
 │   ├── NomeArquivo5.pdf
 ├── LICENSE
 ├── README.md
-├── Training-NomeDoTreinamento.md
+├── Training-PostgreSQL.md
 └── learning_notes.md
