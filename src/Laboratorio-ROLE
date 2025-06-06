@@ -1,0 +1,126 @@
+-- Criando uma ROLE
+CREATE role myrole;
+
+-- Retorno
+/*
+CREATE ROLE
+
+Query returned successfully in 177 msec.
+*/
+
+-- Excuindo uma ROLE
+DROP role myrole;
+
+
+-- Retorno
+/*
+DROP ROLE
+
+Query returned successfully in 105 msec.
+*/
+
+-- Verificando as ROLES existentes
+SELECT rolname FROM pg_roles;
+
+-- Retorno
+/*
+"rolname"
+"postgres"
+"pg_database_owner"
+"pg_read_all_data"
+"pg_write_all_data"
+"pg_monitor"
+"pg_read_all_settings"
+"pg_read_all_stats"
+"pg_stat_scan_tables"
+"pg_read_server_files"
+"pg_write_server_files"
+"pg_execute_server_program"
+"pg_signal_backend"
+"pg_checkpoint"
+"pg_maintain"
+"pg_use_reserved_connections"
+"pg_create_subscription"
+"carlosgimenes"
+*/
+
+-- Verificando as ROLES com privilegios de LOGON
+SELECT
+	ROLNAME,
+	ROLCANLOGIN
+FROM
+	PG_ROLES
+WHERE
+	ROLCANLOGIN;
+
+-- Retorno
+/*
+"rolname"			"rolcanlogin"
+"postgres"			true
+"carlosgimenes"		true
+*/
+
+-- Criando um ROLE que possa fazer LOGIN
+CREATE ROLE MYROLE2 LOGIN PASSWORD 'sua_senha'
+
+-- Retorno
+/*
+CREATE ROLE
+
+Query returned successfully in 121 msec.
+*/
+
+-- Verificando as ROLES com privilegios de LOGON
+SELECT
+	ROLNAME,
+	ROLCANLOGIN
+FROM
+	PG_ROLES
+WHERE
+	ROLCANLOGIN;
+
+-- Retorno
+/*
+"rolname"		"rolcanlogin"
+"postgres"		true
+"carlosgimenes"	true
+"myrole2"		true
+*/
+
+-- Excuindo uma ROLE
+DROP role myrole2;
+
+-- Retorno
+/*
+DROP ROLE
+
+Query returned successfully in 139 msec.
+*/
+
+-- Criando um ROLE com permissões e atributos adicionais
+CREATE ROLE MYROLE3 LOGIN PASSWORD 'sua_senha' CREATEDB CREATEROLE;
+
+-- Permissões e Atributos
+/*
+LOGIN		=	Permite a ROLE logar no servidor PostgreSQL com a senha "sua_senha"
+CREATEDB	= 	Permite a ROLE criar Bancos de Dados
+CREATEROLE	=	Permite a ROLE criar outras ROLES
+*/
+
+-- Podemos testar este usuário pelo psql (client)
+psql -U myrole3 -h 192.168.192 -d postgres
+
+-- Digite a senha "sua_senha"
+
+-- Explore
+SELECT rolname FROM pg_roles WHERE rolcanlogin;
+
+-- Alterando a senha de uma ROLE (Incluside do postgresql)
+ALTER ROLE myrole3 PASSWORD 'sua_nova_senha'
+
+-- Retorno
+/*
+ALTER ROLE
+
+Query returned successfully in 128 msec.
+*/
