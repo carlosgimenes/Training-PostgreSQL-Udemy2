@@ -1,4 +1,4 @@
-# Training LocalTreinamento - NomeDoTreinamento
+# Udemy - Banco de Dados Postgres, Modelagem de Dados e programação usando SQL - do Básico ao Avançado
 
 ## Lições Aprendidas
 
